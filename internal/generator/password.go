@@ -20,9 +20,9 @@ func New() *Generator {
 	return &Generator{src: &entropy.CSPRNG{}}
 }
 
-// Generate 生成指定长度的随机密码
 func (g *Generator) Generate(length int) (string, error) {
 	result := make([]byte, length)
+
 	for i := 0; i < length; i++ {
 		idx, err := g.src.IntN(len(charsetAll))
 		if err != nil {

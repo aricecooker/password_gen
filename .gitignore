@@ -1,10 +1,15 @@
 # Binaries
-pwgen
-pwgen.exe
 *.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 
 # Go
-go.sum
+*.test
+*.out
+coverage.txt
+!go.sum
 
 # IDE
 .idea/
