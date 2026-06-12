@@ -1,0 +1,18 @@
+# Binaries
+pwgen
+pwgen.exe
+*.exe
+
+# Go
+go.sum
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build output
+dist/
