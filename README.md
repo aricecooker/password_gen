@@ -1,19 +1,19 @@
 # pwgen - 随机密码生成器
 
-一个用 Go 写的命令行密码生成器。
+一个用 Go 写的命令行密码生成器，零依赖，熵源使用 `crypto/rand`。
 
 ## 安装
 
 ```bash
-go install github.com/yourname/password_gen/cmd/pwgen@latest
+go install github.com/aricecooker/password_gen/cmd/pwgen@latest
 ```
 
 或者本地运行：
 
 ```bash
-git clone https://github.com/yourname/password_gen
+git clone https://github.com/aricecooker/password_gen
 cd password_gen
-go run cmd/pwgen/main.go -l 16
+go run cmd/pwgen/main.go
 ```
 
 ## 用法
@@ -24,10 +24,18 @@ pwgen
 
 # 指定长度
 pwgen -l 24
-pwgen --length 24
 
-# 查看帮助
-pwgen --help
+# 一次生成 5 个
+pwgen -c 5
+
+# 不含符号
+pwgen -no-symbol
+
+# 显示密码熵值
+pwgen -strength
+
+# 写入文件
+pwgen -c 100 -o passwords.txt
 ```
 
 ## 选项
@@ -35,10 +43,24 @@ pwgen --help
 | 选项 | 简写 | 默认值 | 说明 |
 |------|------|--------|------|
 | `--length` | `-l` | 16 | 密码长度，范围 6-128 |
+| `--count` | `-c` | 1 | 生成数量，范围 1-1000 |
+| `--output` | `-o` | - | 输出文件（默认 stdout） |
+| `--no-upper` | - | false | 排除大写字母 |
+| `--no-lower` | - | false | 排除小写字母 |
+| `--no-digit` | - | false | 排除数字 |
+| `--no-symbol` | - | false | 排除特殊符号 |
+| `--strength` | `-s` | false | 显示熵值（bits） |
+| `--help` | `-h` | - | 显示帮助 |
+| `--version` | `-v` | - | 显示版本 |
 
 ## 字符集
 
-当前包含：大写字母 + 小写字母 + 数字 + 常见符号，共 76 个字符。
+| 类别 | 字符 | 数量 |
+|------|------|------|
+| 大写字母 | A-Z | 26 |
+| 小写字母 | a-z | 26 |
+| 数字 | 0-9 | 10 |
+| 符号 | `!@#$%^&*()-=_+[]{}|;:,.<>?` | 28 |
 
 ## 安全
 
