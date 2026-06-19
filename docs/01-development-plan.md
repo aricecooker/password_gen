@@ -1,90 +1,127 @@
 # 随机密码生成器 - 开发计划
 
-> 版本: v0.1.0 | 日期: 2026-06-12
+> 版本: v0.2.0 | 更新日期: 2026-06-19
 
 ## 1. 目标
 
-Go 写的 CLI 工具，运行 `pwgen` 随机生成一个密码字符串。
+Go 写的 CLI 工具，运行 `pwgen` 随机生成密码字符串。
 
 ```
 $ pwgen
 aB3kL9mNpQ2rT8vX
 
-$ pwgen -l 24
-kQ8vN2jK9yX7mZ4jK9wQ1nB6
+$ pwgen -l 24 -c 3 -strength
+nTC6uLPtH,nW2[x:gK3+   103.4 bits
+8>b=wWxu22:RLN8l5#cR   103.4 bits
+8D+]^joY{N5uLB?0Mz9!   103.4 bits
 ```
 
-## 2. MVP 范围（v0.1）
+## 2. 已完成版本
 
-**只做一件事**：接受长度参数，输出一个随机密码。
+### v0.1（MVP）✓
+
+最小可用版本：接受长度，输出一个随机密码。
 
 | 项 | 决定 |
 |----|------|
 | 语言 | Go 1.22+ |
-| 字符集 | 大写字母 + 小写字母 + 数字（62 字符） |
-| 长度 | 默认 16，可用 `-l` 指定，范围 4–128 |
-| 熵源 | `crypto/rand` |
-| 依赖 | 零第三方依赖，纯标准库 |
+| 字符集 | 大写 + 小写 + 数字 + 26 个符号（共 88 字符） |
+| 长度 | 默认 16，`-l` 指定，范围 6–128 |
+| 熵源 | `crypto/rand` + 拒绝采样 |
+| 依赖 | 零第三方依赖 |
 
-**v0.1 不做**（留待后续）：强度评估、特殊符号、批量、文件输出、助记短语、配置文件、剪贴板、跨平台二进制分发。
+### v0.2（扩展功能）✓
 
-## 3. 目录结构
+- `-c` / `--count` 批量生成（1–1000）
+- `-o` / `--output` 输出到文件
+- `--no-upper` / `--no-lower` / `--no-digit` / `--no-symbol` 字符集开关
+- `-s` / `--strength` 显示熵值（bits）
+
+## 3. 实际目录结构
 
 ```
 password_gen/
 ├── cmd/
 │   └── pwgen/
-│       └── main.go          # 入口
+│       └── main.go              # 105 行 - CLI 入口
 ├── internal/
 │   ├── generator/
-│   │   ├── password.go      # 生成逻辑
-│   │   └── password_test.go
+│   │   └── password.go          # 74 行 - 生成逻辑 + 熵值计算
 │   └── entropy/
-│       ├── csprng.go        # crypto/rand 封装
-│       └── csprng_test.go
-├── go.mod
-├── README.md
+│       └── csprng.go            # 28 行 - crypto/rand 封装
+├── go.mod                       # 模块声明
+├── README.md                    # 项目首页
+├── .gitignore
 └── docs/
-    ├── 01-development-plan.md
-    ├── 02-api-reference.md
-    └── 03-security-review.md
+    ├── 01-development-plan.md   # 本文档
+    ├── 02-api-reference.md      # CLI 参数手册
+    ├── 03-security-review.md    # 安全设计
+    └── 04-git-cheatsheet.md     # Git 速查
 ```
 
-保持小。代码量预期 < 150 行（含测试）。
+代码总量：约 207 行（含 main.go）。
 
-## 4. 核心流程
+## 4. 模块分层
 
 ```
-main()
-  → 解析 -l
-  → generator.Generate(length)
-       → 循环 length 次
-         → entropy.IntN(62)   # 拒绝采样，无偏置
-         → 取字符
-  → 打印到 stdout
+cmd/pwgen/main.go              ← 用户入口（解析 flag、组装、输出）
+       │
+       ▼
+internal/generator/password.go ← 业务逻辑（字符集、Generate、Entropy）
+       │
+       ▼
+internal/entropy/csprng.go     ← 熵源（crypto/rand + 拒绝采样）
 ```
 
-## 5. 迭代步骤
+单向依赖，每层只依赖下一层。
 
-1. **M0 脚手架**：`go mod init`、目录骨架、`main.go` 输出 "hello"
-2. **M1 生成器**：`entropy.IntN` + `generator.Generate` + 单元测试
-3. **M2 CLI**：flag 解析、长度校验、`--help` / `--version`
+## 5. 核心算法
 
-预计 1 个工作日内完成。
+**熵源（无偏整数随机）**
 
-## 6. 测试
+```
+IntN(n):
+  threshold = 256 - (256 % n)   # 最大能被 n 整除的阈值
+  loop:
+    r = rand.Read(1 字节)        # 0~255
+    if r < threshold:
+      return r % n               # 接受
+    # 否则丢弃重试
+```
 
-- `password_test.go`：固定种子 mock，验证生成字符全在字符集内、长度正确
-- `csprng_test.go`：`IntN` 范围、错误传播
+**密码生成**
+
+```
+Generate(opts):
+  charset = 拼接启用的字符类别
+  for i in 0..length:
+    idx = entropy.IntN(len(charset))
+    result[i] = charset[idx]
+  return string(result)
+```
+
+**熵值计算**
+
+```
+Entropy = length × log2(charsetSize)
+```
+
+## 6. 后续路线（v0.3+）
+
+| 功能 | 优先级 | 说明 |
+|------|--------|------|
+| 单元测试 + CI | 高 | `csprng_test.go`、`password_test.go`、GitHub Actions |
+| 排除易混淆字符 | 中 | `--no-ambiguous` 排除 `0OoIl1` |
+| 助记短语模式 | 中 | EFF 词表，`pwgen --passphrase --words 4` |
+| 强度等级标签 | 低 | 在 bits 后面加 Weak/Strong/… 文字 |
+| 跨平台二进制发布 | 低 | Makefile + GitHub Actions |
+| 复制到剪贴板 | 低 | `--copy` |
+| 配置文件 | 低 | `~/.config/pwgen/config.yaml` |
+
+每个特性独立增量，做完一个推一个。
+
+## 7. 测试策略（待实现）
+
+- `csprng_test.go`：`IntN` 范围、错误传播、分布均匀性
+- `password_test.go`：`Generate` 长度正确、字符全在字符集内
 - 验收：`go test ./...` 通过；`go vet` 干净
-
-## 7. 后续路线（v0.2+）
-
-- `-c` 批量生成
-- `--no-xxx` 字符集开关
-- `--symbols` 自定义符号
-- 强度评估
-- 助记短语
-- 跨平台构建脚本
-
-每个特性独立增量，不预先设计。
